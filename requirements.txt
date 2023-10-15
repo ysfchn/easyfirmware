@@ -1,0 +1,6 @@
+httpx~=0.20.0
+lxml==4.9.3
+beautifulsoup4~=4.12.2
+xmltodict==0.13.0
+dicttoxml==1.7.16
+pycryptodome~=3.19.0
