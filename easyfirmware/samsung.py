@@ -15,8 +15,8 @@ BINARY_INFO_URL = "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInform.do"
 BINARY_FILE_URL = "https://neofussvr.sslcs.cdngc.net/NF_DownloadBinaryInitForMass.do"
 BINARY_DOWNLOAD_URL = "http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do"
 
-KEY_1 = "hqzdurufm2c8mf6bsjezu1qgveouv7c7"
-KEY_2 = "w13r4cvf4hctaujv"
+KEY_1 = "vicopx7dqu06emacgpnpy8j8zwhduwlh"
+KEY_2 = "9u7qab84rpc16gvk"
 
 class Session(NamedTuple):
     encrypted_nonce : str
@@ -88,20 +88,24 @@ def do_get_session() -> Session:
 def do_binary_details(
     firmware_version : str, 
     region : str, 
-    model : str, 
+    model : str,
+    imei : int,
     ack : Session
 ) -> FirmwareDetails:
     req = httpx.request("POST", BINARY_INFO_URL, content = _get_binary_info_xml(
         firmware_version = firmware_version,
         region = region,
         model = model,
-        nonce = ack.nonce
+        imei = imei,
+        nonce = ack.nonce,
     ), headers = _get_headers(ack))
     req.raise_for_status()
     # Parse XML.
     body = xmltodict.parse(
         req.text, dict_constructor = dict
     )["FUSMsg"]["FUSBody"].get("Put", {})
+    if "BINARY_NAME" not in body:
+        raise Exception(req.text)
     # If file extension ends with .enc4 that means 
     # it is using version 4 encryption, otherwise 2 (.enc2).
     ENCRYPT_VERSION = 4 if str(body["BINARY_NAME"]["Data"]).endswith("4") else 2
@@ -237,7 +241,8 @@ def _get_binary_info_xml(*,
     firmware_version : str, 
     region : str, 
     model : str, 
-    nonce : str
+    nonce : str,
+    imei : int
 ):
     logic_check = "".join([firmware_version[ord(x) & 0xF] for x in nonce])
     return dicttoxml.dicttoxml({
@@ -248,6 +253,8 @@ def _get_binary_info_xml(*,
                     "ACCESS_MODE": {"Data": "2"},
                     "BINARY_NATURE": {"Data": "1"},
                     "CLIENT_PRODUCT": {"Data": "Smart Switch"},
+                    "CLIENT_VERSION": {"Data": "4.3.23123_1"},
+                    "DEVICE_IMEI_PUSH": {"Data": str(imei)},
                     "DEVICE_FW_VERSION": {"Data": firmware_version},
                     "DEVICE_LOCAL_CODE": {"Data": region},
                     "DEVICE_MODEL_NAME": {"Data": model},
